@@ -1,0 +1,26 @@
+[mcp_servers.espn_fantasy_football]
+command = "/opt/homebrew/bin/uv"
+args = [
+  "--directory",
+  "/Users/tony/repos/mcp_espn_ff",
+  "run",
+  "--env-file",
+  "/Users/tony/repos/mcp_espn_ff/.env",
+  "espn_fantasy_server.py",
+]
+startup_timeout_sec = 30
+
+[mcp_servers.espn_fantasy_football.tools.get_configured_leagues]
+approval_mode = "approve"
+
+[mcp_servers.espn_fantasy_football.tools.get_team_roster]
+approval_mode = "approve"
+
+[mcp_servers.espn_fantasy_football.tools.get_matchup_info]
+approval_mode = "approve"
+
+[mcp_servers.espn_fantasy_football.tools.get_league_info]
+approval_mode = "approve"
+
+[mcp_servers.espn_fantasy_football.tools.get_player_stats]
+approval_mode = "approve"

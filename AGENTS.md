@@ -1,6 +1,27 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents working in this repository.
+
+## ESPN Fantasy Football MCP Routing
+
+- For prompts about ESPN fantasy football leagues, teams, rosters, players,
+  standings, scores, or weekly matchups, always call the
+  `espn_fantasy_football` MCP server and use its returned data. Do not answer
+  league-specific questions from memory or by guessing.
+- When a prompt does not provide an explicit league ID, call
+  `get_configured_leagues` first and resolve the requested league or team from
+  its name, league ID, and team ID. Ask the user only when the configured
+  records are missing or genuinely ambiguous.
+- Choose the narrowest applicable MCP tool. Ask for a league ID, team ID, week,
+  or year only when the request cannot be completed without it.
+- Private-league credentials are loaded automatically from the server's
+  `ESPN_S2` and `SWID` environment variables. Do not ask the user for cookies or
+  call `authenticate` unless automatic authentication fails and the user
+  explicitly wants a temporary override.
+- Never repeat, log, or expose ESPN cookie values in responses.
+- Repository implementation, debugging, and documentation questions do not
+  require an ESPN data tool call unless they also ask for live fantasy-football
+  data.
 
 ## Project Overview
 
@@ -23,12 +44,13 @@ The entire server implementation is in `espn_fantasy_server.py`. It uses the Fas
 
 1. **ESPNFantasyFootballAPI Class** (lines 29-72)
    - Manages ESPN league instances with caching
-   - Handles per-session credential storage (ESPN_S2 and SWID cookies)
+   - Loads ESPN_S2 and SWID cookies from the environment
+   - Supports temporary per-session credential overrides
    - Uses cache keys that include authentication info to support both public and private leagues
 
 2. **Session Management**
    - Uses a simple `SESSION_ID = "default_session"` approach
-   - Credentials are stored in memory per-session in the `api.credentials` dict
+   - Environment credentials are the default; runtime overrides are stored in `api.credentials`
    - League instances are cached with keys that include auth info: `{league_id}_{year}_{espn_s2}_{swid}`
 
 3. **Football Year Logic** (lines 23-25)
@@ -37,9 +59,10 @@ The entire server implementation is in `espn_fantasy_server.py`. It uses the Fas
 
 ### MCP Tools
 
-The server exposes 8 tools (all async functions decorated with `@mcp.tool()`):
+The server exposes 9 tools (all async functions decorated with `@mcp.tool()`):
 
-- `authenticate()` - Store ESPN credentials for accessing private leagues
+- `authenticate()` - Temporarily override ESPN credentials for the current session
+- `get_configured_leagues()` - List configured league names, league IDs, and team IDs
 - `get_league_info()` - Basic league information
 - `get_team_roster()` - Player roster for a specific team
 - `get_team_info()` - Team statistics and transaction info
@@ -71,7 +94,9 @@ Managed via `pyproject.toml` with uv:
 ## Key Implementation Details
 
 ### Credential Storage
-Credentials are stored per-session (not globally) to support multiple concurrent users in theory, though the current implementation uses a single default session ID.
+Credentials default to the `ESPN_S2` and `SWID` process environment variables.
+The `authenticate` tool can store a temporary per-session override in memory,
+though the current implementation uses a single default session ID.
 
 ### Logging
 The server logs extensively to stderr using `log_error()` function. This is important for debugging in Claude Desktop, which captures stderr output.
@@ -83,6 +108,6 @@ The server initialization is wrapped in a try/except that keeps the process runn
 
 When testing tools:
 - Use a public league first (doesn't require authentication)
-- For private leagues, use the `authenticate()` tool first with valid ESPN_S2 and SWID cookies
+- For private leagues, populate `.env` and launch the server with `uv run --env-file .env`
 - Team IDs start at 1, not 0
 - Week numbers are typically 1-17 for most leagues
